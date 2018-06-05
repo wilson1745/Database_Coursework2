@@ -1,0 +1,42 @@
+Databases Coursework 2
+----------------------
+
+This is a good implementation that meets a majority of the criteria and has no major flaws.
+
+In your diagram, it would be nice to arrange the relationships in a way that does not produce a 'maze' - try and make sure the lines do not overlap if possible. You also have a small error in that your diagram allows a topic with 0 posts.
+
+Since the PK of Person is id, the FKs should point at this and not at 'username', even though that is a candidate key too.
+
+You constructed some useful helper methods for repeating subtasks. This is a positive point in your implementation.
+
+I can see why you wrote methods like existString. The way you use it in your application is safe from SQL injection, but in a bigger application having methods like this around is dangerous as a programmer might misuse them or forget which ways of using them are or are not safe. A possible compromise is to have safe methods existTopic, existPerson etc. that just delegate to the current existString, the point is that in the API methods you only call the safe methods so the danger is confined to one place.
+
+Some bugs that I found:
+
+  * getPersonView: doesn't check next() return value and has no 'return failure' case, so it doesn't handle a non-existing username correctly.
+  * addNewPerson: should reject an empty string but not null stuId.
+  * getForum: should sort by title.
+  * getForum: crashes if the forum does not exist as it calls getString without checking if next() was true.
+  * getSimpleTopic: mixes up username and name.
+  * getSimpleTopic: calls getLatestPost(1) but ignores the result, I presume this is left over testing code.
+  * createPost: doesn't check return value from countPostsInTopic, this would crash if the call returned failure/fatal.
+  * createTopic (and elsewhere): you sometimes check a condition, create a failure message but forget to return it, so your method carries on.
+  * getLikers always returns a null result as you forgot to include the result in the call to success().
+  * getTopic sets the wrong forumId on posts as you're using one of the temp variables for this.
+
+Two bigger problems:
+
+In createTopic is the one place where you need a transaction spanning more than one statement. You get this wrong - you commit early, before calling createPost so if createPost crashes then you have a topic without a post. You also don't check createPost's return value - I'd just 'return createPost(...)' to do two things in one here.
+
+The point of getAdvancedForum was to handle a complex query *without* doing SQL in a loop. On line 586 you call getLatestPost within the loop, which fires off another query. (Also, a forum with no topics is allowed, so not a failure.)
+
+Individual Reports
+------------------
+
+Correct use of GROUP BY is one of the hardest parts of SQL to teach, I find. I am glad that you had an opportunity to practice this in the coursework.
+
+Integers in e.g. setString(1, username) are an annoyance that reflects just how old JDBC is. In some newer languages, you can write your statement as "SELECT name FROM Person WHERE username = :username" and then do setParam("username", username) e.g. you can give your placeholders names instead of just using ? marks. But not in JDBC, I'm afraid.
+
+In getString on the other hand, you can (and should) do getString("name") instead of getString(1) as it's clearer to read. If your field name is something more complex, simply create an alias for it in the SQL statement.
+
+I designed this assignment to look as much as possible like the kind of thing a programmer might do as part of a real job, based on my own experience in the workplace. I am glad that it felt this way to some of my students too.
